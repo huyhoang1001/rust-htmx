@@ -1,0 +1,21 @@
+[package]
+name = "sse-rust-htmx"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.8.0-alpha.1"
+serde = { version = "1.0.214", features = ["derive"] }
+serde_json = "1.0.132"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+html-node = "0.5.0"
+fake = "3.0.0"
+futures = "0.3.31"
+anyhow = "1.0.93"
+tokio-stream = "0.1.16"
+tower-http = { version = "0.6.2", features = ["fs"]}
+tower = { version = "0.5.1", features = ["full"] }
