@@ -2,8 +2,10 @@
 
 This project implements a real-time web application using Rust and the Axum framework. It showcases how to build a Server-Sent Events (SSE) feature, dynamic HTML rendering, and a shared state mechanism for handling posts and user interactions.
 
-[Watch the demo video](./demo/20241130_144842.mp4)
-
+<video width="600" controls>
+<source src="./demo/20241130_144842.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
 ---
 
 ## Features
