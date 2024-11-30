@@ -25,14 +25,14 @@ This project implements a real-time web application using Rust and the Axum fram
 ## Project Structure
 
 ### 1. **Endpoints**
-#### `home_sse`
+#### `home_sse` [GET]
 Handles the Server-Sent Events (SSE) connection.  
 Real-time updates are sent to the client when the application's `posts` data changes.
 
-#### `home`
+#### `home` [GET]
 Renders the home page as HTML, dynamically generating its content based on the current state of the application's posts.
 
-#### `create_post`
+#### `create_post` [POST]
 Handles incoming requests to create a new post. Updates the application state and appends the new post to the shared `posts` collection.
 
 ---
@@ -73,23 +73,27 @@ A data structure representing a single post with fields:
 ---
 
 ## How to Run
-Clone the repository:
 
-```bash
-git clone https://github.com/your-repo-url.git
-cd your-project-folder
-```
 ### Install Rust:
-Follow the instructions at rustup.rs.
-
-### Add dependencies:
-Add required crates to your Cargo.toml file, such as axum, tokio, time, and fake.
+Follow the instructions at [rust-lang](https://www.rust-lang.org/).
 
 ### Run the application:
 
 ```bash
 cargo run
 ```
+
+### Live Development:
+To enable live updates while coding install cargo-watch:
+
+```bash
+    cargo install cargo-watch
+```
+then run:
+```bash
+    cargo watch -x run
+```
+
 Visit the endpoints:
 
 Home page: http://localhost:8080
