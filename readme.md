@@ -32,7 +32,7 @@ Real-time updates are sent to the client when the application's `posts` data cha
 #### `home` [GET]
 Renders the home page as HTML, dynamically generating its content based on the current state of the application's posts.
 
-#### `create_post` [POST]
+#### `home` [POST]
 Handles incoming requests to create a new post. Updates the application state and appends the new post to the shared `posts` collection.
 
 ---
@@ -80,7 +80,7 @@ Follow the instructions at [rust-lang](https://www.rust-lang.org/).
 ### Run the application:
 
 ```bash
-cargo run
+    cargo run
 ```
 
 ### Live Development:
