@@ -3,6 +3,17 @@ use crate::views::layout;
 use tokio::sync::watch::Ref;
 use crate::data::model::Post;
 
+/// Generates the HTML content for the home page.
+///
+/// # Parameters
+///
+/// - `username`: A string slice representing the username of the current user.
+/// - `posts`: A reference to a vector of `Post` instances wrapped in `Ref`.
+///   This contains the posts to be displayed on the home page.
+///
+/// # Returns
+///
+/// A `String` containing the generated HTML content for the home page.
 pub fn home_page(username: &str, posts: Ref<Vec<Post>>) -> String {
     println!("posts {:?}", posts.clone());
     let html_content = layout(html! {
