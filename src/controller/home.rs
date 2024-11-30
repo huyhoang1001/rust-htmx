@@ -19,7 +19,6 @@ pub struct QueryParams {
     message: String,
 }
 
-
 /// Renders the home page as an HTML response, dynamically generating its content
 /// based on the current state of the application's posts.
 ///
@@ -43,7 +42,6 @@ pub async fn home(
     let content = home_page(&username, receiver.borrow_and_update());
     Html(content)
 }
-
 
 /// Handles a Server-Sent Events (SSE) stream for the home page, sending updated HTML content
 /// whenever the application's post data changes.
@@ -83,7 +81,6 @@ pub async fn home_sse(
     Sse::new(ReceiverStream::new(receiver1)).keep_alive(KeepAlive::default())
 }
 
-
 /// Handles the creation of a new post and adds it to the shared application state.
 ///
 /// # Parameters
@@ -114,4 +111,3 @@ pub async fn create_post(
     });
     Ok(StatusCode::OK)
 }
-
