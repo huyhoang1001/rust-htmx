@@ -1,3 +1,4 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -18,19 +19,22 @@ impl PostDataSource {
 
         // Spawn a task to monitor changes to `posts` and send updates
         join_set.spawn(async move {
-            let mut last_sent_posts = vec![]; // Track the last sent posts
-
+            let mut last_hash: u64 = 0; // Track the last sent posts
             loop {
+                let mut hasher = DefaultHasher::new();
+
                 let posts_lock = posts_clone.lock().await;
+                posts_lock.hash(&mut hasher);
+                let hash = hasher.finish();
 
                 // Only send the posts if they have changed since the last send
-                if *posts_lock != last_sent_posts {
+                if hash != last_hash {
                     sender.send_replace(posts_lock.clone());
-                    last_sent_posts = posts_lock.clone(); // Update the last sent posts
+                    last_hash = hash; // Update the last sent posts
                 }
 
                 // Sleep or wait for a signal to avoid busy-waiting
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(1000)).await;
             }
         });
 

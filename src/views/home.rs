@@ -1,17 +1,9 @@
-use std::sync::mpsc::RecvError;
-use axum::extract::State;
-use axum::response::{Html, Sse};
-use axum::response::sse::{Event, KeepAlive};
-use fake::Fake;
 use html_node::{html, text, Node};
 use crate::views::layout;
-use fake::faker::internet::en::Username;
-use futures::Stream;
 use tokio::sync::watch::Ref;
-use tokio_stream::wrappers::ReceiverStream;
 use crate::data::model::Post;
 
-fn tweet(username: &str, posts: Ref<Vec<Post>>) -> String {
+pub fn home_page(username: &str, posts: Ref<Vec<Post>>) -> String {
     println!("posts {:?}", posts.clone());
     let html_content = layout(html! {
         <body>
@@ -20,7 +12,8 @@ fn tweet(username: &str, posts: Ref<Vec<Post>>) -> String {
                     sse-connect="http://localhost:8080/home/sse"
                     sse-swap="message"
                     hx-select=".wrapper"
-                    hx-swap=r#"morph:innerHTML"#>
+                    hx-include="data-query"
+                    hx-swap=r#"morph:{ignoreActiveValue:true,morphStyle:'innerHTML'}"#>
 
                     <div class="wrapper">
                         <nav class="navbar navbar-dark bg-dark shadow-sm py-0">
@@ -41,13 +34,15 @@ fn tweet(username: &str, posts: Ref<Vec<Post>>) -> String {
                                     <div>
                                         <form hx-post="http://localhost:8080/home" hx-swap="none">
                                             <input
+                                                data-query
                                                 type="hidden"
                                                 class="form-control"
                                                 name="username"
                                                 readonly="true"
+                                                value={username}
                                             />
                                             <div class="mb-3 row">
-                                                <label for="txtMessage"> "Message:" </label>
+                                                <label for="txtMessage"> "Message:"  </label>
                                                 <textarea
                                                     id="txtMessage"
                                                     class="form-control"
@@ -75,14 +70,14 @@ fn tweet(username: &str, posts: Ref<Vec<Post>>) -> String {
                                                         <div class="card mb-2 shadow-sm" id="tweet-{{t.id}}">
                                                             <div class="card-body">
                                                                 <div class="d-flex">
-                                                                    <img class="me-4" src="" width="108" />
+                                                                    <img class="me-4" src={text!("{}", post.avatar.to_string())} width="108" />
                                                                 <div>
                                                                 <h5 class="card-title text-muted">
-                                                                    {text!("{}", post.username)}
-                                                                    <small> : time</small>
+                                                                    {text!("{}: ", post.username)}
+                                                                    <small> {text!("{}", post.time)} </small>
                                                                 </h5>
                                                                 <div class="card-text lead mb-2">
-                                                                    Htest
+                                                                    {text!("{}", post.message.to_string())}
                                                                 </div>
                                                             </div>
                                                           </div>
@@ -104,58 +99,3 @@ fn tweet(username: &str, posts: Ref<Vec<Post>>) -> String {
     });
     html_content.to_string()
 }
-pub async fn home(
-    State(crate::AppState {
-        post_receiver: mut receiver,
-        ..
-    }): State<crate::AppState>
-) -> Html<String> {
-    let username: String = Username().fake();
-    let content = tweet(&username, receiver.borrow_and_update());
-    Html(content)
-}
-
-pub async fn home_sse(
-    State(crate::AppState {
-        post_receiver: mut _receiver,
-        ..
-    }): State<crate::AppState>
-) -> Sse<impl Stream<Item = Result<Event, RecvError>>> {
-    let username: String = Username().fake();
-    let (sender, receiver1) = tokio::sync::mpsc::channel(1);
-    tokio::task::spawn(async move {
-        loop {
-            if _receiver.changed().await.is_err() {
-                println!("Post Receiver disconnected");
-                return;
-            }
-
-            let html = tweet(&username, _receiver.borrow_and_update());
-            if let Err(err) = sender.send(Ok(Event::default().data(html))).await {
-                println!("Failed to send event: {}", err);
-                return;
-            }
-        }
-    });
-    Sse::new(ReceiverStream::new(receiver1)).keep_alive(KeepAlive::default())
-}
-
-
-pub async fn create_post(
-    State(crate::AppState {
-        posts: state,
-    ..
-    }): State<crate::AppState>,
-) {
-    let mut posts_lock = state.lock().await; // Lock the Mutex
-    posts_lock.push(Post {
-        username: "test".parse().unwrap(),
-        message: "".to_string(),
-        id: "".to_string(),
-        retweets: 0,
-        likes: 0,
-        time: "".to_string(),
-        avatar: "".to_string(),
-    });  // Modify the vector
-}
-
