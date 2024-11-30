@@ -40,7 +40,7 @@ pub fn home_page(username: &str, posts: Ref<Vec<Post>>) -> String {
                                     <p class="text-center mt-2">
                                         "A Twitter clone in "
                                         <a href="https://htmx.org"> "htmx" </a>
-                                        " and Node"
+                                        " and Rust"
                                     </p>
                                     <div>
                                         <form hx-post="http://localhost:8080/home" hx-swap="none">
