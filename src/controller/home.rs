@@ -40,6 +40,7 @@ pub async fn home(
 ) -> Html<String> {
     let username: String = Username().fake();
     let content = home_page(&username, receiver.borrow_and_update());
+    println("Let Q developer review this one!")
     Html(content)
 }
 
