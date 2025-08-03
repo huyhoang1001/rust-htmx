@@ -10,5 +10,4 @@ use crate::data::model::Post;
 pub struct AppState {
     pub posts: Arc<Mutex<Vec<Post>>>,
     pub post_receiver: tokio::sync::watch::Receiver<Vec<Post>>,
-    pub next_post_id: Arc<Mutex<u64>>,
 }

@@ -6,8 +6,7 @@ use std::env;
 // region:    --- Modules
 use std::sync::Arc;
 use tower_http::services::ServeDir;
-use axum::{Router, routing::get};
-use axum::routing::{post, put};
+use axum::{Router, routing::{get, post, put}};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
@@ -21,7 +20,6 @@ use crate::data::posts_datasource::PostDataSource;
 struct AppState {
     posts: Arc<Mutex<Vec<Post>>>,
     post_receiver: tokio::sync::watch::Receiver<Vec<Post>>,
-    next_post_id: Arc<Mutex<u64>>,
 }
 
 #[tokio::main]
@@ -33,14 +31,12 @@ async fn main() {
         .init();
 
     let posts = Arc::new(Mutex::new(vec![]));
-    let next_post_id = Arc::new(Mutex::new(1u64));
     let mut join_set = JoinSet::new();
     let post_data_source = PostDataSource::new(&mut join_set, &posts);
 
     let app_state = AppState {
         post_receiver: post_data_source.receiver,
         posts,
-        next_post_id,
     };
     let current_dir = env::current_dir().unwrap();
     let lib_path = current_dir.join("src/lib");
@@ -51,8 +47,9 @@ async fn main() {
         .route("/home", get(controller::home::home))
         .route("/home/sse", get(controller::home::home_sse))
         .route("/home", post(controller::home::create_post))
-        .route("/posts/:id/edit", get(controller::home::edit_post_form))
-        .route("/posts/:id", put(controller::home::update_post))
+        .route("/posts/{id}/edit", get(controller::home::edit_post))
+        .route("/posts/{id}", put(controller::home::update_post))
+        .route("/posts/{id}/cancel", get(controller::home::cancel_edit_post))
         .nest_service("/lib", ServeDir::new(lib_path))
         .with_state(app_state);
 
