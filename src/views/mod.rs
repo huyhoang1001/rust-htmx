@@ -1,7 +1,7 @@
 use html_node::{html, Node};
 pub mod home;
 
-fn layout(content: Node) -> Node {
+pub fn layout(content: Node) -> Node {
     html! {
         <html>
             <head>

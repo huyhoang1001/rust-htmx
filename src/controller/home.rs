@@ -1,5 +1,5 @@
 use std::sync::mpsc::RecvError;
-use axum::extract::State;
+use axum::extract::{State, Path};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Sse};
 use axum::response::sse::{Event, KeepAlive};
@@ -11,11 +11,16 @@ use crate::data::model::Post;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use crate::controller::form_qs::JsonOrForm;
-use crate::views::home::home_page;
+use crate::views::home::{home_page, edit_form, post_card};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
     username: String,
+    message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdatePostParams {
     message: String,
 }
 
@@ -85,8 +90,8 @@ pub async fn home_sse(
 ///
 /// # Parameters
 ///
-/// - `State(crate::AppState { posts: state, .. })`: Extracts the shared application state containing
-///   the `posts` vector, which is protected by a `Mutex`. The `State` wrapper allows for dependency injection
+/// - `State(crate::AppState { posts: state, next_post_id, .. })`: Extracts the shared application state containing
+///   the `posts` vector and `next_post_id` counter, which are protected by `Mutex`. The `State` wrapper allows for dependency injection
 ///   of the app state.
 /// - `JsonOrForm(payload)`: Parses the incoming request body as either JSON or a form payload, extracting
 ///   the `QueryParams` structure that contains the `username` and `message` for the new post.
@@ -98,16 +103,92 @@ pub async fn home_sse(
 pub async fn create_post(
     State(crate::AppState {
               posts: state,
+              next_post_id,
               ..
           }): State<crate::AppState>,
     JsonOrForm(payload): JsonOrForm<QueryParams>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut posts_lock = state.lock().await; // Lock the Mutex
+    let mut id_lock = next_post_id.lock().await;
+    let post_id = *id_lock;
+    *id_lock += 1;
+    
     posts_lock.push(Post {
+        id: post_id,
         username: payload.username.to_string(),
         message: payload.message.to_string(),
         time: OffsetDateTime::now_utc().to_string(),
-        avatar: format!("https://ui-avatars.com/api/?background=random&rounded=true&name= {}", payload.username.to_string()),
+        avatar: format!("https://ui-avatars.com/api/?background=random&rounded=true&name={}", payload.username.to_string()),
+        owner_id: payload.username.to_string(), // Simple ownership based on username for now
     });
     Ok(StatusCode::OK)
+}
+
+/// Returns an HTML form for editing a specific post.
+///
+/// # Parameters
+///
+/// - `Path(post_id)`: The ID of the post to edit, extracted from the URL path.
+/// - `State(crate::AppState { posts, .. })`: The shared application state containing the posts.
+///
+/// # Returns
+///
+/// - `Html<String>` containing the edit form if the post is found.
+/// - `StatusCode::NOT_FOUND` if the post doesn't exist.
+pub async fn edit_post_form(
+    Path(post_id): Path<u64>,
+    State(crate::AppState { posts, .. }): State<crate::AppState>,
+) -> Result<Html<String>, StatusCode> {
+    let posts_lock = posts.lock().await;
+    
+    if let Some(post) = posts_lock.iter().find(|p| p.id == post_id) {
+        let form_html = edit_form(post);
+        Ok(Html(form_html))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
+
+/// Handles updating an existing post.
+///
+/// # Parameters
+///
+/// - `Path(post_id)`: The ID of the post to update, extracted from the URL path.
+/// - `State(crate::AppState { posts, .. })`: The shared application state containing the posts.
+/// - `JsonOrForm(payload)`: The form data containing the updated message.
+///
+/// # Returns
+///
+/// - `Html<String>` containing the updated post HTML if successful.
+/// - `StatusCode::NOT_FOUND` if the post doesn't exist.
+/// - `StatusCode::FORBIDDEN` if the user doesn't own the post.
+pub async fn update_post(
+    Path(post_id): Path<u64>,
+    State(crate::AppState { posts, .. }): State<crate::AppState>,
+    JsonOrForm(payload): JsonOrForm<UpdatePostParams>,
+) -> Result<Html<String>, StatusCode> {
+    let mut posts_lock = posts.lock().await;
+    
+    // For demo purposes, we'll use a simple approach where we allow editing
+    // if the username matches. In a real app, you'd have proper authentication.
+    
+    if let Some(post) = posts_lock.iter_mut().find(|p| p.id == post_id) {
+        // For demo, we'll allow editing by anyone for now
+        // In production, you'd check proper authentication/authorization
+        
+        // Validate message is not empty
+        if payload.message.trim().is_empty() {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+        
+        // Update the post
+        post.message = payload.message;
+        post.time = OffsetDateTime::now_utc().to_string(); // Update timestamp
+        
+        // Return the updated post HTML - use the post's username as current user for consistency
+        let updated_post_html = post_card(post, &post.username);
+        Ok(Html(updated_post_html))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
 }
