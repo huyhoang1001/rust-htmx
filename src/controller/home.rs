@@ -1,5 +1,5 @@
 use std::sync::mpsc::RecvError;
-use axum::extract::State;
+use axum::extract::{State, Path};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Sse};
 use axum::response::sse::{Event, KeepAlive};
@@ -11,7 +11,8 @@ use crate::data::model::Post;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use crate::controller::form_qs::JsonOrForm;
-use crate::views::home::home_page;
+use crate::views::home::{home_page, edit_form, post_html};
+use html_node::{html, text};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
@@ -103,11 +104,115 @@ pub async fn create_post(
     JsonOrForm(payload): JsonOrForm<QueryParams>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut posts_lock = state.lock().await; // Lock the Mutex
+    let id = posts_lock.len(); // Simple ID assignment based on current length
     posts_lock.push(Post {
+        id,
         username: payload.username.to_string(),
         message: payload.message.to_string(),
         time: OffsetDateTime::now_utc().to_string(),
         avatar: format!("https://ui-avatars.com/api/?background=random&rounded=true&name= {}", payload.username.to_string()),
     });
     Ok(StatusCode::OK)
+}
+
+/// Handles GET /posts/:id/edit - returns HTML form with post data for editing
+///
+/// # Parameters
+///
+/// - `Path(id)`: Extracts the post ID from the URL path
+/// - `State(crate::AppState { posts: state, .. })`: Extracts the shared application state
+///
+/// # Returns
+///
+/// - `Html<String>` containing the edit form if the post exists
+/// - `StatusCode::NOT_FOUND` if the post doesn't exist
+pub async fn edit_post(
+    Path(id): Path<usize>,
+    State(crate::AppState {
+              posts: state,
+              ..
+          }): State<crate::AppState>,
+) -> Result<Html<String>, StatusCode> {
+    let posts_lock = state.lock().await;
+    
+    if let Some(post) = posts_lock.iter().find(|p| p.id == id) {
+        let form_html = edit_form(post);
+        Ok(Html(form_html))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
+
+/// Handles PUT /posts/:id - updates an existing post
+///
+/// # Parameters
+///
+/// - `Path(id)`: Extracts the post ID from the URL path
+/// - `State(crate::AppState { posts: state, .. })`: Extracts the shared application state
+/// - `JsonOrForm(payload)`: Parses the incoming request body
+///
+/// # Returns
+///
+/// - `Html<String>` containing the updated post HTML if successful
+/// - `StatusCode::NOT_FOUND` if the post doesn't exist
+/// - `StatusCode::BAD_REQUEST` if validation fails
+pub async fn update_post(
+    Path(id): Path<usize>,
+    State(crate::AppState {
+              posts: state,
+              ..
+          }): State<crate::AppState>,
+    JsonOrForm(payload): JsonOrForm<QueryParams>,
+) -> Result<Html<String>, StatusCode> {
+    // Validate input
+    if payload.message.trim().is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut posts_lock = state.lock().await;
+    
+    if let Some(post) = posts_lock.iter_mut().find(|p| p.id == id) {
+        // Update the post
+        post.message = payload.message.to_string();
+        post.username = payload.username.to_string();
+        // Keep the original time and avatar
+        
+        // Return the updated post HTML
+        let updated_post_html = post_html(post);
+        Ok(Html(updated_post_html.to_string()))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
+
+/// Handles GET /posts/:id/cancel - cancels editing and returns the original post content
+///
+/// # Parameters
+///
+/// - `Path(id)`: Extracts the post ID from the URL path
+/// - `State(crate::AppState { posts: state, .. })`: Extracts the shared application state
+///
+/// # Returns
+///
+/// - `Html<String>` containing the original post content if the post exists
+/// - `StatusCode::NOT_FOUND` if the post doesn't exist
+pub async fn cancel_edit_post(
+    Path(id): Path<usize>,
+    State(crate::AppState {
+              posts: state,
+              ..
+          }): State<crate::AppState>,
+) -> Result<Html<String>, StatusCode> {
+    let posts_lock = state.lock().await;
+    
+    if let Some(post) = posts_lock.iter().find(|p| p.id == id) {
+        let post_content_html = html! {
+            <div class="card-text lead mb-2" id={text!("post-content-{}", post.id)}>
+                {text!("{}", post.message.to_string())}
+            </div>
+        };
+        Ok(Html(post_content_html.to_string()))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
 }

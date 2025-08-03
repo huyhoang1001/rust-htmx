@@ -76,26 +76,7 @@ pub fn home_page(username: &str, posts: Ref<Vec<Post>>) -> String {
                                             html! {""}
                                         } else {
                                             Node::from(posts.iter().map(|post| {
-                                                html! {
-                                                    <div>
-                                                        <div class="card mb-2 shadow-sm" id="tweet-{{t.id}}">
-                                                            <div class="card-body">
-                                                                <div class="d-flex">
-                                                                    <img class="me-4" src={text!("{}", post.avatar.to_string())} width="108" />
-                                                                <div>
-                                                                <h5 class="card-title text-muted">
-                                                                    {text!("{}: ", post.username)}
-                                                                    <small> {text!("{}", post.time)} </small>
-                                                                </h5>
-                                                                <div class="card-text lead mb-2">
-                                                                    {text!("{}", post.message.to_string())}
-                                                                </div>
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                }
+                                                post_html(post)
                                             }))
                                         }
                                     }
@@ -109,4 +90,92 @@ pub fn home_page(username: &str, posts: Ref<Vec<Post>>) -> String {
         </body>
     });
     html_content.to_string()
+}
+
+/// Generates HTML for a single post with edit functionality
+///
+/// # Parameters
+///
+/// - `post`: A reference to a `Post` instance
+///
+/// # Returns
+///
+/// A `Node` containing the HTML for the post
+pub fn post_html(post: &Post) -> Node {
+    html! {
+        <div id={text!("post-{}", post.id)}>
+            <div class="card mb-2 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <img class="me-4" src={text!("{}", post.avatar.to_string())} width="108" />
+                        <div class="flex-grow-1">
+                            <h5 class="card-title text-muted">
+                                {text!("{}: ", post.username)}
+                                <small> {text!("{}", post.time)} </small>
+                            </h5>
+                            <div class="card-text lead mb-2" id={text!("post-content-{}", post.id)}>
+                                {text!("{}", post.message.to_string())}
+                            </div>
+                            <div class="mt-2">
+                                <button 
+                                    class="btn btn-sm btn-outline-secondary"
+                                    hx-get={text!("http://localhost:8080/posts/{}/edit", post.id)}
+                                    hx-target={text!("#post-content-{}", post.id)}
+                                    hx-swap="outerHTML"
+                                >
+                                    "Edit"
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+/// Generates HTML for the edit form
+///
+/// # Parameters
+///
+/// - `post`: A reference to a `Post` instance to be edited
+///
+/// # Returns
+///
+/// A `String` containing the HTML for the edit form
+pub fn edit_form(post: &Post) -> String {
+    let form_html = html! {
+        <div id={text!("post-content-{}", post.id)}>
+            <form 
+                hx-put={text!("http://localhost:8080/posts/{}", post.id)}
+                hx-target={text!("#post-content-{}", post.id)}
+                hx-swap="outerHTML"
+            >
+                <input type="hidden" name="username" value={text!("{}", post.username)} />
+                <div class="mb-3">
+                    <label for={text!("edit-message-{}", post.id)} class="form-label"> "Message:" </label>
+                    <textarea
+                        id={text!("edit-message-{}", post.id)}
+                        class="form-control"
+                        rows="3"
+                        name="message"
+                        required="true"
+                    >{text!("{}", post.message)}</textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary"> "Save" </button>
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-secondary"
+                        hx-get={text!("http://localhost:8080/posts/{}/cancel", post.id)}
+                        hx-target={text!("#post-content-{}", post.id)}
+                        hx-swap="outerHTML"
+                    >
+                        "Cancel"
+                    </button>
+                </div>
+            </form>
+        </div>
+    };
+    form_html.to_string()
 }

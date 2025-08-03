@@ -6,8 +6,7 @@ use std::env;
 // region:    --- Modules
 use std::sync::Arc;
 use tower_http::services::ServeDir;
-use axum::{Router, routing::get};
-use axum::routing::post;
+use axum::{Router, routing::{get, post, put}};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
@@ -48,6 +47,9 @@ async fn main() {
         .route("/home", get(controller::home::home))
         .route("/home/sse", get(controller::home::home_sse))
         .route("/home", post(controller::home::create_post))
+        .route("/posts/{id}/edit", get(controller::home::edit_post))
+        .route("/posts/{id}", put(controller::home::update_post))
+        .route("/posts/{id}/cancel", get(controller::home::cancel_edit_post))
         .nest_service("/lib", ServeDir::new(lib_path))
         .with_state(app_state);
 
